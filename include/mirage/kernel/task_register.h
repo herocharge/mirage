@@ -28,6 +28,8 @@ public:
 
 public:
   static TaskRegister *get_instance();
+  int register_custom_kernel_task(threadblock::Graph const &bgraph,
+                                          std::vector<int> const &params);
   int register_embedding_task(threadblock::Graph const &bgraph,
                               std::vector<int> const &params);
   int register_rmsnorm_task(threadblock::Graph const &bgraph,

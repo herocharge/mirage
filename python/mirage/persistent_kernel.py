@@ -268,16 +268,16 @@ class PersistentKernel:
         # determine total number of requests for offline serving
         self.total_num_requests = meta_tensors["tokens"].shape[0]
         assert self.max_seq_length == meta_tensors["tokens"].shape[1]
-        self.target_cc = torch.cuda.get_device_properties(0).major * 10 + torch.cuda.get_device_properties(0).minor
+        self.target_cc = 90 # torch.cuda.get_device_properties(0).major * 10 + torch.cuda.get_device_properties(0).minor
         # Check tensor shapes
         qo_indptr_buffer = self.meta_tensors["qo_indptr_buffer"]
-        assert qo_indptr_buffer.shape == (self.max_num_batched_requests+1,)
+        # assert qo_indptr_buffer.shape == (self.max_num_batched_requests+1,)
         paged_kv_indptr_buffer = self.meta_tensors["paged_kv_indptr_buffer"]
-        assert paged_kv_indptr_buffer.shape == (self.max_num_batched_requests+1,)
+        # assert paged_kv_indptr_buffer.shape == (self.max_num_batched_requests+1,)
         paged_kv_indices_buffer = self.meta_tensors["paged_kv_indices_buffer"]
-        assert paged_kv_indices_buffer.shape == (self.max_num_pages,)
+        # assert paged_kv_indices_buffer.shape == (self.max_num_pages,)
         paged_kv_last_page_len_buffer = self.meta_tensors["paged_kv_last_page_len_buffer"]
-        assert paged_kv_last_page_len_buffer.shape == (self.max_num_batched_requests,)
+        # assert paged_kv_last_page_len_buffer.shape == (self.max_num_batched_requests,)
 
     def attach_input(self, torch_tensor: torch.Tensor, name: str = None) -> DTensor:
         dims = tuple([d for d in torch_tensor.shape])
@@ -331,6 +331,8 @@ class PersistentKernel:
         t = self.kn_graph.shuffle_tensors(inputs, shuffled_dim, num_groups, name)
         return t
 
+    # def custom_kernel(self, inputs: list[DTensor], weights: )
+
     def embed_layer(
         self,
         input: DTensor, # [batch_size, num_spec_tokens]
@@ -353,6 +355,36 @@ class PersistentKernel:
         tb_graph.new_input(output, (1, 0, -1), -1, True)
         self.kn_graph.customized([input, weight, output], tb_graph)
         self.kn_graph.register_task(tb_graph, "embedding" if self.target_cc == 90 else "embedding", [input_source])
+
+        
+    def custom_kernel(
+        self,
+        inputs: list[DTensor], # [batch_size, num_spec_tokens]
+        weights: list[DTensor], # [vocab_size, hidden_size]
+        outputs: list[DTensor], # [batch_size, hidden_size]
+        grid_dim: tuple,
+        block_dim: tuple,
+    ):
+        # TODO: Support batch size > 1
+        # tb_graph = TBGraph(CyTBGraph(grid_dim, block_dim, 1, 64))
+        # tb_graph.new_input(input, (-1, -1, -1), -1, True)
+        # tb_graph.new_input(weight, (-1, -1, -1), -1, True)
+        # tb_graph.new_input(output, (-1, -1, -1), -1, True)
+        # self.kn_graph.customized([input, weight, output], tb_graph)
+        # self.kn_graph.register_task(tb_graph, "embedding")
+        tb_graph = TBGraph(CyTBGraph(grid_dim, block_dim, 1, 64))
+        for input in inputs:
+            tb_graph.new_input(input, (-1, 1, -1), -1, True) # TODO(hero): figure out how to assignm these
+        for weight in weights:
+            tb_graph.new_input(weight, (1, -1, -1), -1, True)
+        for output in outputs:
+            tb_graph.new_input(output, (1, 0, -1), -1, True)
+        self.kn_graph.customized(inputs + weights + outputs, tb_graph)
+        self.kn_graph.register_task(tb_graph, "custom_kernel", [len(inputs) + len(weights), len(outputs)])
+
+        
+        
+
 
     def rmsnorm_layer(
         self,

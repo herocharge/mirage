@@ -1298,6 +1298,7 @@ TaskGraphResult print_task_graph(
 
   // Generate task implementation
   std::map<TaskType, std::string> task_type_to_name;
+  task_type_to_name[TASK_CUSTOM_KERNEL] = "TASK_CUSTOM_KERNEL";
   task_type_to_name[TASK_EMBEDDING] = "TASK_EMBEDDING";
   task_type_to_name[TASK_RMS_NORM] = "TASK_RMS_NORM";
   task_type_to_name[TASK_RMS_NORM_LINEAR] = "TASK_RMS_NORM_LINEAR";

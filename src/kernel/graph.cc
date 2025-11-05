@@ -442,7 +442,11 @@ void Graph::register_task(char const *task_type, std::vector<int> params) {
   assert(op->op_type == type::KN_CUSTOMIZED_OP);
   KNCustomizedOp const *customized = static_cast<KNCustomizedOp const *>(op);
   TaskRegister *task_register = TaskRegister::get_instance();
-  if (name == "embedding") {
+  if (name == "custom_kernel"){
+    int variant_id = 
+      task_register->register_custom_kernel_task(customized->bgraph, params);
+    task_config[op] = std::make_tuple(params[0], params[1],TASK_CUSTOM_KERNEL, variant_id);
+  } else if (name == "embedding") {
     int variant_id =
         task_register->register_embedding_task(customized->bgraph, params);
     task_config[op] = std::make_tuple(2, 1, TASK_EMBEDDING, variant_id);

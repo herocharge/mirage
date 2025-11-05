@@ -69,4 +69,20 @@ __device__ __forceinline__ void
   }
 }
 
+
+template <typename T>
+__device__ __forceinline__ void
+  custom_kernel(void const *__restrict__ input_ptr,
+                     void const *__restrict__ embedding_ptr,
+                     void *__restrict__ output_ptr) {
+ T const *__restrict__ input_ids =
+      static_cast<T const *>(input_ptr);
+  T const *__restrict__ embedding = static_cast<T const *>(embedding_ptr);
+  T *__restrict__ output = static_cast<T *>(output_ptr);
+  output[0] = input_ids[0] * embedding[0];
+}
+
+
+
+
 } // namespace kernel

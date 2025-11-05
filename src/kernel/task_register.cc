@@ -46,6 +46,56 @@ int TaskRegister::register_task_variant(runtime::TaskType type,
   return (int)(variants.size() - 1);
 }
 
+int TaskRegister::register_custom_kernel_task(threadblock::Graph const &bgraph,
+                                          std::vector<int> const &params) {
+  assert(params.size() == 2);
+  // params[0]: input source (0: tokens, 1: input_token)
+  int batch_size = 0, output_size = 0, output_stride = 0;
+  std::vector<tb::TBInputOp *> input_ops;
+  std::vector<tb::TBInputOp *> output_ops;
+  int num_inputs = params[0];
+  int num_outputs = params[1];
+
+  assert(bgraph.operators.size() == (size_t)num_inputs + num_outputs);
+  for (auto const &op : bgraph.operators) {
+    assert(op->op_type == mirage::type::TB_INPUT_OP);
+    if (input_ops.size() < (size_t)num_inputs) {
+      input_ops.push_back(static_cast<tb::TBInputOp *>(op));
+    } else {
+      output_ops.push_back(static_cast<tb::TBInputOp *>(op));
+    }
+  }
+  // assert(output_ops[0]->output_tensors[0].num_dims == 2);
+  // batch_size = output_ops[0]->output_tensors[0].dim[0];
+  // output_size = output_ops[0]->output_tensors[0].dim[1];
+  // kn::KNInputOp *kn_input_op =
+  //     static_cast<kn::KNInputOp *>(output_ops[0]->dtensor.owner_op);
+  // output_stride = static_cast<int>(kn_input_op->input_strides[0]);
+
+  mirage::transpiler::CodeKeeper code;
+  code.inc_indent();
+  code.e("kernel::custom_kernel<bfloat16>(" // TODO(hero): fix this
+  );
+  // if (params[0] == 0) {
+  //   code.e("    runtime_config.tokens + runtime_config.step[0], ");
+  // } else if (params[0] == 1) {
+  //   code.e("    task_desc->input_ptrs[0],");
+  // }
+  // code.e("    task_desc->input_ptrs[1],");
+  // code.e("    task_desc->output_ptrs[0]);");
+
+  for(int i = 0; i < num_inputs; i++)
+    code.e("    task_desc->input_ptrs[$],", i);
+  for(int i = 0; i < num_outputs; i++){
+    if(i < num_outputs - 1)
+      code.e("    task_desc->output_ptrs[$],", i);
+    else
+      code.e("    task_desc->output_ptrs[$]", i);
+  }
+  code.e(");");
+  return register_task_variant(TASK_CUSTOM_KERNEL, code.to_string());
+}
+
 int TaskRegister::register_embedding_task(threadblock::Graph const &bgraph,
                                           std::vector<int> const &params) {
   assert(params.size() == 1);
@@ -85,6 +135,7 @@ int TaskRegister::register_embedding_task(threadblock::Graph const &bgraph,
   }
   code.e("    task_desc->input_ptrs[1],");
   code.e("    task_desc->output_ptrs[0]);");
+
   return register_task_variant(TASK_EMBEDDING, code.to_string());
 }
 
