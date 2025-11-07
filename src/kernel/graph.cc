@@ -446,6 +446,18 @@ void Graph::register_task(char const *task_type, std::vector<int> params) {
     int variant_id = 
       task_register->register_custom_kernel_task(customized->bgraph, params);
     task_config[op] = std::make_tuple(params[0], params[1],TASK_CUSTOM_KERNEL, variant_id);
+  } else if (name == "subtract_kernel"){
+    int variant_id = 
+      task_register->register_subtract_task(customized->bgraph, params);
+    task_config[op] = std::make_tuple(2, 1,TASK_SUBTRACT, variant_id);
+  } else if (name == "add_kernel"){
+    int variant_id = 
+      task_register->register_add_task(customized->bgraph, params);
+    task_config[op] = std::make_tuple(2, 1,TASK_ADD, variant_id);
+  } else if (name == "transpose_kernel"){
+    int variant_id = 
+      task_register->register_transpose_task(customized->bgraph, params);
+    task_config[op] = std::make_tuple(1, 1,TASK_TRANSPOSE, variant_id);
   } else if (name == "embedding") {
     int variant_id =
         task_register->register_embedding_task(customized->bgraph, params);

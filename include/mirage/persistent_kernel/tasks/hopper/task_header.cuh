@@ -1,5 +1,6 @@
 // Ampere task impls
 #include "tasks/ampere/argmax.cuh"
+#include "tasks/ampere/mlp.cuh"
 #include "tasks/ampere/embedding.cuh"
 #include "tasks/ampere/silu_mul.cuh"
 // Hopper task impls

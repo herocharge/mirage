@@ -40,33 +40,96 @@ mpk = mi.PersistentKernel(
     use_cutlass_kernel=False,
 )
 
-torch_tensor = torch.randn((1,10))
+# torch_tensor = torch.randn((1,10))
 
-x = mpk.attach_input(torch_tensor=torch_tensor, name="x")
-w = mpk.attach_input(torch_tensor=torch.randn((10,20)), name="w")
-w2 = mpk.attach_input(torch_tensor=torch.randn((20,30)), name="w2")
-'''w = mpk.new_tensor(
-    dims=(10, 20),
+# x = mpk.attach_input(torch_tensor=torch_tensor, name="x")
+# w = mpk.attach_input(torch_tensor=torch.randn((10,20)), name="w")
+# w2 = mpk.attach_input(torch_tensor=torch.randn((20,30)), name="w2")
+# '''w = mpk.new_tensor(
+#     dims=(10, 20),
+#     dtype=mi.bfloat16,
+#     name="w",
+#     io_category="cuda_tensor",
+# )'''
+# y = mpk.new_tensor(
+#     dims=(1, 20),
+#     dtype=mi.bfloat16,
+#     name="y",
+#     io_category="cuda_tensor",
+# )
+
+# z = mpk.new_tensor(
+#     dims=(1, 30),
+#     dtype=mi.bfloat16,
+#     name="z",
+#     io_category="cuda_tensor",
+# )
+
+'''
+# W : M x N
+# X : B X M
+# Y_ground : B X N
+
+Y = linear(X, W)
+dY = sub(Y, Y_ground) : B X N
+X' = transpose(X)
+dW = linear(X', dY) : M X B
+W = update(W, dW, lr)
+
+'''
+
+M = 10
+N = 20
+B = 5
+
+input = torch.randn((B,M))
+
+W = mpk.attach_input(torch_tensor=torch.randn((M,N)), name="W")
+X = mpk.attach_input(torch_tensor=input, name="X")
+Xt = mpk.attach_input(torch_tensor=torch.randn((M, B)), name="Xt")
+Y_ground = mpk.attach_input(torch_tensor=torch.randn((B,N)), name="Y_g")
+
+Y = mpk.new_tensor(
+    dims=(B, N),
     dtype=mi.bfloat16,
-    name="w",
-    io_category="cuda_tensor",
-)'''
-y = mpk.new_tensor(
-    dims=(1, 20),
-    dtype=mi.bfloat16,
-    name="y",
+    name="Y",
     io_category="cuda_tensor",
 )
 
-z = mpk.new_tensor(
-    dims=(1, 30),
+# Xt = mpk.new_tensor(
+#     dims=(B, N),
+#     dtype=mi.bfloat16,
+#     name="Xt",
+#     io_category="cuda_tensor",
+# )
+
+
+dY = mpk.new_tensor(
+    dims=(B, N),
     dtype=mi.bfloat16,
-    name="z",
+    name="DY",
     io_category="cuda_tensor",
 )
 
-mpk.custom_kernel([x], [w], [y], (1, 1, 1), (1, 1, 1))
-mpk.custom_kernel([y], [w2], [z], (1, 1, 1), (1, 1, 1))
+dW = mpk.new_tensor(
+    dims=(B, N),
+    dtype=mi.bfloat16,
+    name="DW",
+    io_category="cuda_tensor",
+)
+
+
+mpk.linear_layer(input=X, weight=W, output=Y, grid_dim=(1, 1, 1), block_dim=(128, 1, 1))
+mpk.subtract(left=Y, right=Y_ground, output=dY, grid_dim=(1,1,1), block_dim=(128, 1, 1))
+# mpk.transpose(input=X, output=Xt, grid_dim=(1,1,1), block_dim=(128, 1, 1))
+mpk.linear_layer(input=Xt, weight=dY, output=dW, grid_dim=(1, 1, 1), block_dim=(128, 1, 1))
+mpk.add(left=W, right=dW, output=W, grid_dim=(1,1,1), block_dim=(128, 1, 1))
+
+
+
+
+# mpk.custom_kernel([x], [w], [y], (1, 1, 1), (128, 1, 1))
+# mpk.custom_kernel([y], [w2], [z], (1, 1, 1), (128, 1, 1))
 
 mpk.compile(output_dir=".")
 mpk()

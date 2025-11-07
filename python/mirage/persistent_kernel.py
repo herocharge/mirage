@@ -382,7 +382,51 @@ class PersistentKernel:
         self.kn_graph.customized(inputs + weights + outputs, tb_graph)
         self.kn_graph.register_task(tb_graph, "custom_kernel", [len(inputs) + len(weights), len(outputs)])
 
-        
+    def subtract(
+            self,
+            left : DTensor, 
+            right : DTensor,
+            output: DTensor,
+            grid_dim: tuple,
+            block_dim: tuple,
+        ):
+
+        tb_graph = TBGraph(CyTBGraph(grid_dim, block_dim, 1, 64))
+        tb_graph.new_input(left, (-1, 1, -1), -1, True) # TODO(hero): figure out how to assignm these
+        tb_graph.new_input(right, (1, -1, -1), -1, True)
+        tb_graph.new_input(output, (1, 0, -1), -1, True)
+        self.kn_graph.customized([left, right, output], tb_graph)
+        self.kn_graph.register_task(tb_graph, "subtract_kernel", [])
+
+    def add(
+            self,
+            left : DTensor, 
+            right : DTensor,
+            output: DTensor,
+            grid_dim: tuple,
+            block_dim: tuple,
+        ):
+
+        tb_graph = TBGraph(CyTBGraph(grid_dim, block_dim, 1, 64))
+        tb_graph.new_input(left, (-1, 1, -1), -1, True) # TODO(hero): figure out how to assignm these
+        tb_graph.new_input(right, (1, -1, -1), -1, True)
+        tb_graph.new_input(output, (1, 0, -1), -1, True)
+        self.kn_graph.customized([left, right, output], tb_graph)
+        self.kn_graph.register_task(tb_graph, "add_kernel", [])
+
+    def transpose(
+            self,
+            input : DTensor, 
+            output: DTensor,
+            grid_dim: tuple,
+            block_dim: tuple,
+        ):
+
+        tb_graph = TBGraph(CyTBGraph(grid_dim, block_dim, 1, 64))
+        tb_graph.new_input(input, (-1, 1, -1), -1, True) # TODO(hero): figure out how to assignm these
+        tb_graph.new_input(output, (1, 0, -1), -1, True)
+        self.kn_graph.customized([input, output], tb_graph)
+        self.kn_graph.register_task(tb_graph, "transpose_kernel", [])
         
 
 
